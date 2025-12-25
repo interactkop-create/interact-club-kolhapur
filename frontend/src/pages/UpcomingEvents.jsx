@@ -96,13 +96,13 @@ export const UpcomingEvents = () => {
                   <p className="text-sm text-muted-foreground mb-6 flex-grow">
                     {event.description}
                   </p>
-                  {event.registrationOpen ? (
+                  {event.registration_open ? (
                     <Button 
                       className="w-full btn-primary"
-                      onClick={() => handleRegister(event.id, event.title)}
-                      disabled={registeredEvents.includes(event.id)}
+                      onClick={() => handleRegister(event._id, event.title)}
+                      disabled={registeredEvents.includes(event._id)}
                     >
-                      {registeredEvents.includes(event.id) ? 'Registered' : 'Register Now'}
+                      {registeredEvents.includes(event._id) ? 'Registered' : 'Register Now'}
                     </Button>
                   ) : (
                     <Button className="w-full" variant="outline" disabled>
