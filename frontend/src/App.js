@@ -15,6 +15,9 @@ import { Contact } from "./pages/Contact";
 import { AdminLogin } from "./pages/AdminLogin";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
 import { AdminBoardMembers } from "./pages/admin/AdminBoardMembers";
+import { AdminEvents } from "./pages/admin/AdminEvents";
+import { AdminNews } from "./pages/admin/AdminNews";
+import { AdminGallery } from "./pages/admin/AdminGallery";
 import { Toaster } from "./components/ui/sonner";
 
 function App() {
