@@ -14,6 +14,7 @@ export const Header = () => {
     { name: 'Upcoming Events', path: '/upcoming-events' },
     { name: 'Board of Directors', path: '/board' },
     { name: 'News', path: '/news' },
+    { name: 'Gallery', path: '/gallery' },
     { name: 'Contact', path: '/contact' },
   ];
 
