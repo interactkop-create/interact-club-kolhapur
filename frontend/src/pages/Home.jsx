@@ -71,7 +71,7 @@ export const Home = () => {
       {/* Stats Section */}
       <section className="py-16 bg-secondary/30">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {stats.active_members > 0 && (
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-full mb-4">
