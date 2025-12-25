@@ -41,6 +41,7 @@ function App() {
                     <Route path="events" element={<AdminEvents />} />
                     <Route path="news" element={<AdminNews />} />
                     <Route path="gallery" element={<AdminGallery />} />
+                    <Route path="settings" element={<AdminSettings />} />
                   </Routes>
                 </AdminLayout>
               </ProtectedRoute>
