@@ -51,15 +51,15 @@ export const Gallery = () => {
             {galleryImages.map((image) => (
               <div
                 key={image._id}
-                className="aspect-video overflow-hidden rounded-lg shadow-lg card-hover cursor-pointer"
+                className="relative aspect-video overflow-hidden rounded-lg shadow-lg card-hover cursor-pointer group"
                 onClick={() => setSelectedImage(image)}
               >
                 <img
                   src={image.url}
                   alt={image.caption}
-                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                   <p className="text-white text-sm font-medium">{image.caption}</p>
                 </div>
               </div>
