@@ -506,6 +506,53 @@ async def seed_database():
     return {"message": "Database seeded successfully"}
 
 
+# ==================== UPLOAD ROUTES ====================
+
+@api_router.post("/upload")
+async def upload_file(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Upload an image file (admin only)."""
+    # Validate file type
+    allowed_types = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"]
+    if file.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=400,
+            detail="Only image files (JPEG, PNG, GIF, WebP) are allowed"
+        )
+    
+    # Generate unique filename
+    file_ext = file.filename.split(".")[-1]
+    unique_filename = f"{uuid.uuid4()}.{file_ext}"
+    file_path = UPLOAD_DIR / unique_filename
+    
+    # Save file
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    # Return URL
+    backend_url = os.environ.get('REACT_APP_BACKEND_URL', 'http://localhost:8001')
+    file_url = f"{backend_url}/uploads/{unique_filename}"
+    
+    return {"url": file_url, "filename": unique_filename}
+
+
+def convert_google_drive_link(link: str) -> str:
+    """Convert Google Drive link to direct image URL."""
+    if "drive.google.com" in link:
+        # Extract file ID from various Google Drive URL formats
+        if "/file/d/" in link:
+            file_id = link.split("/file/d/")[1].split("/")[0]
+        elif "id=" in link:
+            file_id = link.split("id=")[1].split("&")[0]
+        else:
+            return link
+        # Return direct download link
+        return f"https://drive.google.com/uc?export=view&id={file_id}"
+    return link
+
+
 # ==================== ROOT ROUTE ====================
 
 @api_router.get("/")
