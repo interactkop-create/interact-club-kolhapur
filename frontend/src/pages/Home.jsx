@@ -3,22 +3,30 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Users, Calendar, Heart, Award } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { eventsAPI, newsAPI } from '../services/api';
+import { eventsAPI, newsAPI, settingsAPI } from '../services/api';
 
 export const Home = () => {
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [newsArticles, setNewsArticles] = useState([]);
+  const [stats, setStats] = useState({
+    active_members: 50,
+    total_events: 20,
+    lives_impacted: 1000,
+    awards_won: 5
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [eventsResponse, newsResponse] = await Promise.all([
+        const [eventsResponse, newsResponse, statsResponse] = await Promise.all([
           eventsAPI.getUpcoming(),
-          newsAPI.getAll()
+          newsAPI.getAll(),
+          settingsAPI.get()
         ]);
         setUpcomingEvents(eventsResponse.data);
         setNewsArticles(newsResponse.data);
+        setStats(statsResponse.data);
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
