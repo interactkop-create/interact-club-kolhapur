@@ -1,8 +1,28 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Users, Calendar, Newspaper, Image } from 'lucide-react';
+import { settingsAPI } from '../services/api';
 
 export const AdminDashboard = () => {
+  const [stats, setStats] = useState({
+    active_members: 50,
+    total_events: 20,
+    lives_impacted: 1000,
+    awards_won: 5
+  });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await settingsAPI.get();
+        setStats(response.data);
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+      }
+    };
+    fetchStats();
+  }, []);
+
   return (
     <div>
       <div className="mb-6">
