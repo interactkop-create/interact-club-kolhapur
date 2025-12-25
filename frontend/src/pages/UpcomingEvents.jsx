@@ -9,8 +9,6 @@ export const UpcomingEvents = () => {
   const { toast } = useToast();
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [upcomingEvents, setUpcomingEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [registeredEvents, setRegisteredEvents] = useState([]);
 
   useEffect(() => {
