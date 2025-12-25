@@ -36,6 +36,9 @@ function App() {
                   <Routes>
                     <Route path="dashboard" element={<AdminDashboard />} />
                     <Route path="board-members" element={<AdminBoardMembers />} />
+                    <Route path="events" element={<AdminEvents />} />
+                    <Route path="news" element={<AdminNews />} />
+                    <Route path="gallery" element={<AdminGallery />} />
                   </Routes>
                 </AdminLayout>
               </ProtectedRoute>
