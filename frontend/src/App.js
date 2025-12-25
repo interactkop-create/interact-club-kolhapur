@@ -11,6 +11,7 @@ import { Events } from "./pages/Events";
 import { UpcomingEvents } from "./pages/UpcomingEvents";
 import { Board } from "./pages/Board";
 import { News } from "./pages/News";
+import { Gallery } from "./pages/Gallery";
 import { Contact } from "./pages/Contact";
 import { AdminLogin } from "./pages/AdminLogin";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
