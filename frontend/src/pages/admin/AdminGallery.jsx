@@ -109,13 +109,10 @@ export const AdminGallery = () => {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="url">Image URL</Label>
-                <Input
-                  id="url"
+                <ImageUpload
                   value={formData.url}
-                  onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-                  placeholder="https://..."
-                  required
+                  onChange={(url) => setFormData({ ...formData, url: url })}
+                  label="Gallery Image"
                 />
               </div>
               <div>
