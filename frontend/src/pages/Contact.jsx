@@ -127,8 +127,8 @@ export const Contact = () => {
                       required
                     />
                   </div>
-                  <Button type="submit" className="w-full btn-primary" size="lg">
-                    Send Message
+                  <Button type="submit" className="w-full btn-primary" size="lg" disabled={submitting}>
+                    {submitting ? 'Sending...' : 'Send Message'}
                   </Button>
                 </form>
               </CardContent>
