@@ -169,13 +169,11 @@ export const AdminBoardMembers = () => {
                 />
               </div>
               <div>
-                <Label htmlFor="image">Image URL</Label>
-                <Input
-                  id="image"
+                <Label htmlFor="image">Image</Label>
+                <ImageUpload
                   value={formData.image}
-                  onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                  placeholder="https://..."
-                  required
+                  onChange={(url) => setFormData({ ...formData, image: url })}
+                  label="Member Photo"
                 />
               </div>
               <div>
