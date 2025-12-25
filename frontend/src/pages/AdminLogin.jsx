@@ -5,11 +5,13 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { useToast } from '../hooks/use-toast';
+import { useAuth } from '../contexts/AuthContext';
 import { authAPI } from '../services/api';
 
 export const AdminLogin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -30,23 +32,16 @@ export const AdminLogin = () => {
     try {
       const response = await authAPI.login(formData.email, formData.password);
       
-      // Store token and user data
-      localStorage.setItem('adminToken', response.data.token);
-      localStorage.setItem('adminUser', JSON.stringify(response.data.user));
+      // Use the login function from auth context
+      login(response.data.user, response.data.token);
       
       toast({
         title: "Login Successful",
-        description: "Redirecting to admin dashboard...",
+        description: "Welcome to the admin dashboard!",
       });
       
-      // Redirect to dashboard (placeholder for now)
-      setTimeout(() => {
-        toast({
-          title: "Admin Dashboard",
-          description: "Admin dashboard coming soon! You are now logged in.",
-        });
-        navigate('/');
-      }, 1000);
+      // Redirect to admin dashboard
+      navigate('/admin/dashboard');
     } catch (error) {
       toast({
         title: "Login Failed",
