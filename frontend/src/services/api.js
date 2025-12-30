@@ -64,6 +64,11 @@ export const contactAPI = {
   submit: (data) => api.post('/contact/submit', data),
 };
 
+export const contactAPI = {
+  submit: (data) => api.post('/contact/submit', data),
+  getSubmissions: () => api.get('/contact/submissions'),
+};
+
 // Settings API
 export const settingsAPI = {
   get: () => api.get('/settings'),
