@@ -1,6 +1,6 @@
 import React from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Users, Calendar, Newspaper, Image, Settings, MessageSquare, LogOut } from 'lucide-react';
-import { LayoutDashboard, Users, Calendar, Newspaper, Image, Settings, LogOut } from 'lucide-react';
 import { Button } from './ui/button';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -9,15 +9,16 @@ export const AdminLayout = ({ children }) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-const navigation = [
-  { name: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
-  { name: 'Board Members', path: '/admin/board-members', icon: Users },
-  { name: 'Events', path: '/admin/events', icon: Calendar },
-  { name: 'News', path: '/admin/news', icon: Newspaper },
-  { name: 'Gallery', path: '/admin/gallery', icon: Image },
-  { name: 'Messages', path: '/admin/messages', icon: MessageSquare },
-  { name: 'Settings', path: '/admin/settings', icon: Settings },
-]; 
+  const navigation = [
+    { name: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
+    { name: 'Board Members', path: '/admin/board-members', icon: Users },
+    { name: 'Events', path: '/admin/events', icon: Calendar },
+    { name: 'News', path: '/admin/news', icon: Newspaper },
+    { name: 'Gallery', path: '/admin/gallery', icon: Image },
+    { name: 'Messages', path: '/admin/messages', icon: MessageSquare },
+    { name: 'Settings', path: '/admin/settings', icon: Settings },
+  ];
+
   const handleLogout = () => {
     logout();
     navigate('/admin/login');
@@ -27,7 +28,6 @@ const navigation = [
 
   return (
     <div className="min-h-screen bg-secondary/30">
-      {/* Top Header */}
       <header className="bg-white border-b sticky top-0 z-50">
         <div className="px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
@@ -57,7 +57,6 @@ const navigation = [
       </header>
 
       <div className="flex">
-        {/* Sidebar */}
         <aside className="w-64 bg-white border-r min-h-screen">
           <nav className="p-4 space-y-2">
             {navigation.map((item) => {
@@ -85,7 +84,6 @@ const navigation = [
           </div>
         </aside>
 
-        {/* Main Content */}
         <main className="flex-1 p-6">
           {children}
         </main>
