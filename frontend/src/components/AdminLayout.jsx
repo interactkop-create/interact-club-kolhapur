@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, Users, Calendar, Newspaper, Image, Settings, MessageSquare, LogOut } from 'lucide-react';
 import { LayoutDashboard, Users, Calendar, Newspaper, Image, Settings, LogOut } from 'lucide-react';
 import { Button } from './ui/button';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,15 +9,15 @@ export const AdminLayout = ({ children }) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  const navigation = [
-    { name: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
-    { name: 'Board Members', path: '/admin/board-members', icon: Users },
-    { name: 'Events', path: '/admin/events', icon: Calendar },
-    { name: 'News', path: '/admin/news', icon: Newspaper },
-    { name: 'Gallery', path: '/admin/gallery', icon: Image },
-    { name: 'Settings', path: '/admin/settings', icon: Settings },
-  ];
-
+const navigation = [
+  { name: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
+  { name: 'Board Members', path: '/admin/board-members', icon: Users },
+  { name: 'Events', path: '/admin/events', icon: Calendar },
+  { name: 'News', path: '/admin/news', icon: Newspaper },
+  { name: 'Gallery', path: '/admin/gallery', icon: Image },
+  { name: 'Messages', path: '/admin/messages', icon: MessageSquare },
+  { name: 'Settings', path: '/admin/settings', icon: Settings },
+]; 
   const handleLogout = () => {
     logout();
     navigate('/admin/login');
