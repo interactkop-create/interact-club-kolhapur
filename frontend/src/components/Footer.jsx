@@ -69,7 +69,7 @@ export const Footer = () => {
               </li>
               <li className="flex items-start space-x-2">
                 <Mail className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                <span className="text-sm">president.interactkop@gmail.com</span>
+                <span className="text-sm">info@interactkolhapur.org</span>
               </li>
             </ul>
           </div>
