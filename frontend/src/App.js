@@ -1,5 +1,5 @@
 import "./App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AdminLayout } from "./components/AdminLayout";
@@ -15,6 +15,7 @@ import { Gallery } from "./pages/Gallery";
 import { Contact } from "./pages/Contact";
 import { AdminLogin } from "./pages/AdminLogin";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
+import { AdminMessages } from "./pages/admin/AdminMessages";
 import { AdminBoardMembers } from "./pages/admin/AdminBoardMembers";
 import { AdminEvents } from "./pages/admin/AdminEvents";
 import { AdminNews } from "./pages/admin/AdminNews";
@@ -28,47 +29,54 @@ function App() {
       <div className="App">
         <BrowserRouter>
           <Routes>
-            {/* Admin routes without header/footer */}
+            {/* Admin login */}
             <Route path="/admin/login" element={<AdminLogin />} />
-            
-            {/* Protected admin routes with admin layout */}
-            <Route path="/admin/*" element={
-              <ProtectedRoute>
-                <AdminLayout>
-                  <Routes>
-                    <Route path="dashboard" element={<AdminDashboard />} />
-                    <Route path="board-members" element={<AdminBoardMembers />} />
-                    <Route path="events" element={<AdminEvents />} />
-                    <Route path="news" element={<AdminNews />} />
-                    <Route path="gallery" element={<AdminGallery />} />
-                    <Route path="settings" element={<AdminSettings />} />
-                  </Routes>
-                </AdminLayout>
-              </ProtectedRoute>
-            } />
-            
-            {/* Public routes with header/footer */}
-            <Route path="/*" element={
-              <>
-                <Header />
-                <main className="flex-grow">
-                  <Routes>
-                    <Route index element={<Home />} />
-                    <Route path="about" element={<About />} />
-                    <Route path="events" element={<Events />} />
-                    <Route path="upcoming-events" element={<UpcomingEvents />} />
-                    <Route path="board" element={<Board />} />
-                    <Route path="news" element={<News />} />
-                    <Route path="gallery" element={<Gallery />} />
-                    <Route path="contact" element={<Contact />} />
-                  </Routes>
-                </main>
-                <Footer />
-              </>
-            } />
+
+            {/* Protected admin routes */}
+            <Route
+              path="/admin/*"
+              element={
+                <ProtectedRoute>
+                  <AdminLayout>
+                    <Routes>
+                      <Route path="dashboard" element={<AdminDashboard />} />
+                      <Route path="messages" element={<AdminMessages />} />
+                      <Route path="board-members" element={<AdminBoardMembers />} />
+                      <Route path="events" element={<AdminEvents />} />
+                      <Route path="news" element={<AdminNews />} />
+                      <Route path="gallery" element={<AdminGallery />} />
+                      <Route path="settings" element={<AdminSettings />} />
+                    </Routes>
+                  </AdminLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Public routes */}
+            <Route
+              path="/*"
+              element={
+                <>
+                  <Header />
+                  <main className="flex-grow">
+                    <Routes>
+                      <Route index element={<Home />} />
+                      <Route path="about" element={<About />} />
+                      <Route path="events" element={<Events />} />
+                      <Route path="upcoming-events" element={<UpcomingEvents />} />
+                      <Route path="board" element={<Board />} />
+                      <Route path="news" element={<News />} />
+                      <Route path="gallery" element={<Gallery />} />
+                      <Route path="contact" element={<Contact />} />
+                    </Routes>
+                  </main>
+                  <Footer />
+                </>
+              }
+            />
           </Routes>
+          <Toaster />
         </BrowserRouter>
-        <Toaster />
       </div>
     </AuthProvider>
   );
