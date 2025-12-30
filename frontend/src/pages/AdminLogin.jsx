@@ -77,7 +77,7 @@ export const AdminLogin = () => {
                 id="email"
                 name="email"
                 type="email"
-                placeholder="admin@interactkop.com"
+                placeholder="your.email@example.com"
                 value={formData.email}
                 onChange={handleChange}
                 required
