@@ -87,6 +87,14 @@ export const AdminLayout = ({ children }) => {
         <main className="flex-1 p-6">
           {children}
         </main>
+         <main className="flex-1 p-6">
+          {children}
+          <div className="mt-8 pt-6 border-t text-center">
+            <p className="text-xs text-muted-foreground">
+              Made with ❤️ by Om Malani, International Service Director, Interact Club of Kolhapur, RI Year 2025-26
+            </p>
+          </div>
+        </main>
       </div>
     </div>
   );
