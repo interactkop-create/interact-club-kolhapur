@@ -422,6 +422,13 @@ async def submit_contact(contact_data: ContactSubmit):
     
     return {"message": "Thank you for contacting us. We'll get back to you soon."}
 
+@api_router.get("/contact/submissions")
+async def get_contact_submissions(current_user: dict = Depends(get_current_user)):
+    """Get all contact form submissions (admin only)."""
+    submissions = await db.contact_submissions.find().sort("created_at", -1).to_list(100)
+    for submission in submissions:
+        submission["_id"] = str(submission["_id"])
+    return submissions
 
 # ==================== SITE SETTINGS ROUTES ====================
 
