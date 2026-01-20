@@ -33,47 +33,23 @@ function App() {
             <Route path="/admin/login" element={<AdminLogin />} />
 
             {/* Protected admin routes */}
-            <Route
-              path="/admin/*"
-              element={
-                <ProtectedRoute>
-                  <AdminLayout>
-                    <Routes>
-                      <Route path="dashboard" element={<AdminDashboard />} />
-                      <Route path="messages" element={<AdminMessages />} />
-                      <Route path="board-members" element={<AdminBoardMembers />} />
-                      <Route path="events" element={<AdminEvents />} />
-                      <Route path="news" element={<AdminNews />} />
-                      <Route path="gallery" element={<AdminGallery />} />
-                      <Route path="settings" element={<AdminSettings />} />
-                    </Routes>
-                  </AdminLayout>
-                </ProtectedRoute>
-              }
-            />
+            <Route path="/admin/dashboard" element={<ProtectedRoute><AdminLayout><AdminDashboard /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/messages" element={<ProtectedRoute><AdminLayout><AdminMessages /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/board-members" element={<ProtectedRoute><AdminLayout><AdminBoardMembers /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/events" element={<ProtectedRoute><AdminLayout><AdminEvents /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/news" element={<ProtectedRoute><AdminLayout><AdminNews /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/gallery" element={<ProtectedRoute><AdminLayout><AdminGallery /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/settings" element={<ProtectedRoute><AdminLayout><AdminSettings /></AdminLayout></ProtectedRoute>} />
 
             {/* Public routes */}
-            <Route
-              path="/*"
-              element={
-                <>
-                  <Header />
-                  <main className="flex-grow">
-                    <Routes>
-                      <Route index element={<Home />} />
-                      <Route path="about" element={<About />} />
-                      <Route path="events" element={<Events />} />
-                      <Route path="upcoming-events" element={<UpcomingEvents />} />
-                      <Route path="board" element={<Board />} />
-                      <Route path="news" element={<News />} />
-                      <Route path="gallery" element={<Gallery />} />
-                      <Route path="contact" element={<Contact />} />
-                    </Routes>
-                  </main>
-                  <Footer />
-                </>
-              }
-            />
+            <Route path="/" element={<><Header /><Home /><Footer /></>} />
+            <Route path="/about" element={<><Header /><About /><Footer /></>} />
+            <Route path="/events" element={<><Header /><Events /><Footer /></>} />
+            <Route path="/upcoming-events" element={<><Header /><UpcomingEvents /><Footer /></>} />
+            <Route path="/board" element={<><Header /><Board /><Footer /></>} />
+            <Route path="/news" element={<><Header /><News /><Footer /></>} />
+            <Route path="/gallery" element={<><Header /><Gallery /><Footer /></>} />
+            <Route path="/contact" element={<><Header /><Contact /><Footer /></>} />
           </Routes>
           <Toaster />
         </BrowserRouter>
