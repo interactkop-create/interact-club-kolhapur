@@ -157,7 +157,7 @@ export const Contact = () => {
                     </div>
                     <div>
                       <h3 className="font-semibold text-foreground mb-1">Email</h3>
-                      <p className="text-muted-foreground break-all">president.interactkop@gmail.com</p>
+                      <p className="text-muted-foreground break-all">info@interactkolhapur.org</p>
                     </div>
                   </div>
                 </CardContent>
