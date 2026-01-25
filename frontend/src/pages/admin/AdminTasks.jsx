@@ -74,8 +74,8 @@ export const AdminTasks = () => {
     try {
       const payload = {
         ...formData,
-        assigned_to_id: formData.assigned_to_id || null,
-      };
+        assigned_to_id: formData.assigned_to_id === 'unassigned' ? null : (formData.assigned_to_id || null),
+};
 
       if (selectedTask) {
         await tasksAPI.update(selectedTask._id, payload);
