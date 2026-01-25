@@ -224,3 +224,47 @@ class SiteSettingsUpdate(BaseModel):
     total_events: Optional[int] = None
     lives_impacted: Optional[int] = None
     awards_won: Optional[int] = None
+
+# Task Models
+class TaskCreate(BaseModel):
+    title: str
+    description: str
+    assigned_to: EmailStr
+    assigned_to_name: str
+    due_date: Optional[str] = None
+    priority: str = "medium"  # low, medium, high
+
+
+class TaskUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[str] = None  # pending, in_progress, completed
+    priority: Optional[str] = None
+
+
+class TaskForward(BaseModel):
+    forward_to: EmailStr
+    forward_to_name: str
+    comment: Optional[str] = None
+
+
+class Task(BaseModel):
+    id: str = Field(default_factory=lambda: str(ObjectId()), alias="_id")
+    title: str
+    description: str
+    created_by: EmailStr
+    created_by_name: str
+    assigned_to: EmailStr
+    assigned_to_name: str
+    status: str = "pending"  # pending, in_progress, completed
+    priority: str = "medium"
+    due_date: Optional[str] = None
+    forwarded_from: Optional[EmailStr] = None
+    forwarded_comment: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    completed_at: Optional[datetime] = None
+
+    class Config:
+        populate_by_name = True
+        json_encoders = {ObjectId: str}
