@@ -19,7 +19,8 @@ from models import (
     UpcomingEvent, UpcomingEventCreate, UpcomingEventUpdate,
     NewsArticle, NewsArticleCreate, NewsArticleUpdate,
     GalleryImage, GalleryImageCreate,
-    ContactSubmit, SiteSettings, SiteSettingsUpdate
+    ContactSubmit, SiteSettings, SiteSettingsUpdate,
+    Task, TaskCreate, TaskUpdate, TaskForward
 )
 from auth import (
     get_password_hash, verify_password, create_access_token, get_current_user
@@ -560,6 +561,152 @@ async def create_admin_accounts():
         "skipped": skipped_count,
         "total": len(board_members)
     }
+
+
+# ==================== TASK MANAGEMENT ROUTES ====================
+
+@api_router.get("/board-members-list")
+async def get_board_members_list(current_user: dict = Depends(get_current_user)):
+    """Get list of all board members for task assignment dropdown."""
+    members = await db.users.find({"role": {"$ne": None}}).to_list(100)
+    return [
+        {
+            "email": member["email"],
+            "name": member.get("name", member["email"]),
+            "role": member.get("role", "Member")
+        }
+        for member in members
+    ]
+
+
+@api_router.post("/tasks", response_model=Task)
+async def create_task(
+    task_data: TaskCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a new task and assign to a board member."""
+    user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
+    
+    task_dict = task_data.dict()
+    task_dict["created_by"] = user["email"]
+    task_dict["created_by_name"] = user.get("name", user["email"])
+    task_dict["status"] = "pending"
+    task_dict["created_at"] = datetime.utcnow()
+    task_dict["updated_at"] = datetime.utcnow()
+    
+    result = await db.tasks.insert_one(task_dict)
+    task_dict["_id"] = str(result.inserted_id)
+    
+    return Task(**task_dict)
+
+
+@api_router.get("/tasks")
+async def get_tasks(current_user: dict = Depends(get_current_user)):
+    """Get all tasks for current user (created by them or assigned to them)."""
+    user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
+    user_email = user["email"]
+    
+    # Get tasks created by user or assigned to user
+    tasks = await db.tasks.find({
+        "$or": [
+            {"created_by": user_email},
+            {"assigned_to": user_email}
+        ]
+    }).sort("created_at", -1).to_list(1000)
+    
+    for task in tasks:
+        task["_id"] = str(task["_id"])
+    
+    return tasks
+
+
+@api_router.put("/tasks/{task_id}", response_model=Task)
+async def update_task(
+    task_id: str,
+    task_data: TaskUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update task status, priority, or other fields."""
+    update_data = {k: v for k, v in task_data.dict().items() if v is not None}
+    update_data["updated_at"] = datetime.utcnow()
+    
+    # If marking as completed, set completed_at
+    if update_data.get("status") == "completed":
+        update_data["completed_at"] = datetime.utcnow()
+    
+    result = await db.tasks.find_one_and_update(
+        {"_id": ObjectId(task_id)},
+        {"$set": update_data},
+        return_document=True
+    )
+    
+    if not result:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    result["_id"] = str(result["_id"])
+    return Task(**result)
+
+
+@api_router.post("/tasks/{task_id}/forward")
+async def forward_task(
+    task_id: str,
+    forward_data: TaskForward,
+    current_user: dict = Depends(get_current_user)
+):
+    """Forward task to another board member."""
+    user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
+    
+    # Get the original task
+    task = await db.tasks.find_one({"_id": ObjectId(task_id)})
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    # Prevent forwarding to original creator
+    if forward_data.forward_to == task["created_by"]:
+        raise HTTPException(
+            status_code=400, 
+            detail="Cannot forward task back to the person who created it"
+        )
+    
+    # Update task with new assignee
+    update_data = {
+        "assigned_to": forward_data.forward_to,
+        "assigned_to_name": forward_data.forward_to_name,
+        "forwarded_from": user["email"],
+        "forwarded_comment": forward_data.comment,
+        "updated_at": datetime.utcnow()
+    }
+    
+    await db.tasks.update_one(
+        {"_id": ObjectId(task_id)},
+        {"$set": update_data}
+    )
+    
+    return {"message": "Task forwarded successfully"}
+
+
+@api_router.delete("/tasks/{task_id}")
+async def delete_task(
+    task_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete a task (only creator can delete)."""
+    user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
+    
+    # Check if task exists and user is creator
+    task = await db.tasks.find_one({"_id": ObjectId(task_id)})
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    if task["created_by"] != user["email"]:
+        raise HTTPException(
+            status_code=403, 
+            detail="Only task creator can delete the task"
+        )
+    
+    await db.tasks.delete_one({"_id": ObjectId(task_id)})
+    return {"message": "Task deleted successfully"}
+
 # ==================== UPLOAD ROUTES ====================
 
 @api_router.post("/upload")
