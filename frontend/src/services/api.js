@@ -68,13 +68,19 @@ export const contactAPI = {
 // Tasks API
 export const tasksAPI = {
   getAll: () => api.get('/tasks'),
-  getBoardMembers: () => api.get('/board-members-list'),
+  getMyTasks: () => api.get('/tasks/my'),
+  getById: (id) => api.get(`/tasks/${id}`),
   create: (data) => api.post('/tasks', data),
   update: (id, data) => api.put(`/tasks/${id}`, data),
-  forward: (id, data) => api.post(`/tasks/${id}/forward`, data),
   delete: (id) => api.delete(`/tasks/${id}`),
+  getComments: (taskId) => api.get(`/tasks/${taskId}/comments`),
+  addComment: (taskId, content) => api.post(`/tasks/${taskId}/comments`, { content }),
 };
 
+// Users API (for task assignment)
+export const usersAPI = {
+  getAll: () => api.get('/users'),
+};
 // Settings API
 export const settingsAPI = {
   get: () => api.get('/settings'),
