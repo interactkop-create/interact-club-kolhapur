@@ -22,6 +22,8 @@ import { AdminNews } from "./pages/admin/AdminNews";
 import { AdminGallery } from "./pages/admin/AdminGallery";
 import { AdminSettings } from "./pages/admin/AdminSettings";
 import { Toaster } from "./components/ui/sonner";
+import { AdminTasks } from "./pages/admin/AdminTasks";
+
 
 function App() {
   return (
@@ -49,6 +51,7 @@ function App() {
             <Route path="/board" element={<><Header /><Board /><Footer /></>} />
             <Route path="/news" element={<><Header /><News /><Footer /></>} />
             <Route path="/gallery" element={<><Header /><Gallery /><Footer /></>} />
+            <Route path="tasks" element={<AdminTasks />} />
             <Route path="/contact" element={<><Header /><Contact /><Footer /></>} />
           </Routes>
           <Toaster />
