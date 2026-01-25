@@ -65,10 +65,22 @@ export const contactAPI = {
   getSubmissions: () => api.get('/contact/submissions'),
 };
 
+// Tasks API
+export const tasksAPI = {
+  getAll: () => api.get('/tasks'),
+  getBoardMembers: () => api.get('/board-members-list'),
+  create: (data) => api.post('/tasks', data),
+  update: (id, data) => api.put(`/tasks/${id}`, data),
+  forward: (id, data) => api.post(`/tasks/${id}/forward`, data),
+  delete: (id) => api.delete(`/tasks/${id}`),
+};
+
+export default api;
 // Settings API
 export const settingsAPI = {
   get: () => api.get('/settings'),
   update: (data) => api.put('/settings', data),
 };
+
 
 export default api;
