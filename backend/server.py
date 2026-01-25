@@ -512,7 +512,54 @@ async def seed_database():
     
     return {"message": "Database seeded successfully"}
 
-
+@api_router.post("/create-admin-accounts")
+async def create_admin_accounts():
+    """Create admin accounts for all 13 board members (one-time setup)."""
+    
+    board_members = [
+        {"email": "president.interactkop@gmail.com", "password": "President@2024", "name": "President", "role": "President"},
+        {"email": "vicepresident.interactkop@gmail.com", "password": "VicePresident@2024", "name": "Vice President", "role": "Vice President"},
+        {"email": "secretary.interactkop@gmail.com", "password": "Secretary@2024", "name": "Secretary", "role": "Secretary"},
+        {"email": "jointsecretary.interactkop@gmail.com", "password": "JointSecretary@2024", "name": "Joint Secretary", "role": "Joint Secretary"},
+        {"email": "treasurer.interactkop@gmail.com", "password": "Treasurer@2024", "name": "Treasurer", "role": "Treasurer"},
+        {"email": "sergeantatarms.interactkop@gmail.com", "password": "Sergeant@2024", "name": "Sergeant at Arms", "role": "Sergeant at Arms"},
+        {"email": "ipp.interactkop@gmail.com", "password": "IPP@2024", "name": "Immediate Past President", "role": "Immediate Past President"},
+        {"email": "rotarycoordinator.interactkop@gmail.com", "password": "Coordinator@2024", "name": "Rotary Interact Coordinator", "role": "Rotary Interact Coordinator"},
+        {"email": "intnationalservice.interactkop@gmail.com", "password": "International@2024", "name": "International Service Director", "role": "International Service Director"},
+        {"email": "communityservice.interactkop@gmail.com", "password": "Community@2024", "name": "Community Service Director", "role": "Community Service Director"},
+        {"email": "clubservice.interactkop@gmail.com", "password": "ClubService@2024", "name": "Club Service Director", "role": "Club Service Director"},
+        {"email": "professionalservice.interactkop@gmail.com", "password": "Professional@2024", "name": "Professional Service Director", "role": "Professional Service Director"},
+        {"email": "publicrelations.interactkop@gmail.com", "password": "PublicRelations@2024", "name": "Public Relations Director", "role": "Public Relations Director"},
+    ]
+    
+    created_count = 0
+    skipped_count = 0
+    
+    for member in board_members:
+        # Check if user already exists
+        existing = await db.users.find_one({"email": member["email"]})
+        if existing:
+            skipped_count += 1
+            continue
+        
+        # Create user
+        hashed_password = get_password_hash(member["password"])
+        user_dict = {
+            "email": member["email"],
+            "password": hashed_password,
+            "name": member["name"],
+            "role": member["role"],
+            "created_at": datetime.utcnow()
+        }
+        await db.users.insert_one(user_dict)
+        created_count += 1
+    
+    return {
+        "message": f"Admin accounts setup complete",
+        "created": created_count,
+        "skipped": skipped_count,
+        "total": len(board_members)
+    }
 # ==================== UPLOAD ROUTES ====================
 
 @api_router.post("/upload")
