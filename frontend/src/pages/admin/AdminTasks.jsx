@@ -1,410 +1,495 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Badge } from '../../components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
-import { Plus, ArrowRight, CheckCircle, Clock, AlertCircle, Trash2 } from 'lucide-react';
-import { tasksAPI } from '../../services/api';
-import { useToast } from '../../hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '../../components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../components/ui/select';
+import { Plus, Edit, Trash2, MessageSquare, Calendar, User, Clock } from 'lucide-react';
+import { tasksAPI, usersAPI } from '../../services/api';
+import { toast } from 'sonner';
+import { useAuth } from '../../contexts/AuthContext';
 
 export const AdminTasks = () => {
-  const { toast } = useToast();
+  const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
-  const [boardMembers, setBoardMembers] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isForwardOpen, setIsForwardOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCommentDialogOpen, setIsCommentDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
-  
-  const [newTask, setNewTask] = useState({
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState('');
+  const [filter, setFilter] = useState('all');
+  const [formData, setFormData] = useState({
     title: '',
     description: '',
-    assigned_to: '',
-    assigned_to_name: '',
+    priority: 'medium',
+    status: 'pending',
+    assigned_to_id: '',
     due_date: '',
-    priority: 'medium'
-  });
-
-  const [forwardData, setForwardData] = useState({
-    forward_to: '',
-    forward_to_name: '',
-    comment: ''
   });
 
   useEffect(() => {
-    fetchData();
+    fetchTasks();
+    fetchUsers();
   }, []);
 
-  const fetchData = async () => {
+  const fetchTasks = async () => {
     try {
-      const [tasksRes, membersRes] = await Promise.all([
-        tasksAPI.getAll(),
-        tasksAPI.getBoardMembers()
-      ]);
-      setTasks(tasksRes.data);
-      setBoardMembers(membersRes.data);
+      const response = await tasksAPI.getAll();
+      setTasks(response.data);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load tasks",
-        variant: "destructive"
-      });
+      console.error('Error fetching tasks:', error);
+      toast.error('Failed to load tasks');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCreateTask = async (e) => {
-    e.preventDefault();
+  const fetchUsers = async () => {
     try {
-      await tasksAPI.create(newTask);
-      toast({ title: "Success", description: "Task created successfully" });
-      setIsCreateOpen(false);
-      setNewTask({
-        title: '',
-        description: '',
-        assigned_to: '',
-        assigned_to_name: '',
-        due_date: '',
-        priority: 'medium'
-      });
-      fetchData();
+      const response = await usersAPI.getAll();
+      setUsers(response.data);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to create task",
-        variant: "destructive"
-      });
+      console.error('Error fetching users:', error);
     }
   };
 
-  const handleMemberSelect = (email) => {
-    const member = boardMembers.find(m => m.email === email);
-    setNewTask({
-      ...newTask,
-      assigned_to: email,
-      assigned_to_name: member ? `${member.name} (${member.role})` : email
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        ...formData,
+        assigned_to_id: formData.assigned_to_id || null,
+      };
+
+      if (selectedTask) {
+        await tasksAPI.update(selectedTask._id, payload);
+        toast.success('Task updated successfully');
+      } else {
+        await tasksAPI.create(payload);
+        toast.success('Task created successfully');
+      }
+      fetchTasks();
+      resetForm();
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error('Error saving task:', error);
+      toast.error('Failed to save task');
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Are you sure you want to delete this task?')) {
+      try {
+        await tasksAPI.delete(id);
+        toast.success('Task deleted successfully');
+        fetchTasks();
+      } catch (error) {
+        console.error('Error deleting task:', error);
+        toast.error('Failed to delete task');
+      }
+    }
+  };
+
+  const handleEdit = (task) => {
+    setSelectedTask(task);
+    setFormData({
+      title: task.title,
+      description: task.description,
+      priority: task.priority,
+      status: task.status,
+      assigned_to_id: task.assigned_to_id || '',
+      due_date: task.due_date || '',
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleViewComments = async (task) => {
+    setSelectedTask(task);
+    try {
+      const response = await tasksAPI.getComments(task._id);
+      setComments(response.data);
+      setIsCommentDialogOpen(true);
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+      toast.error('Failed to load comments');
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (!newComment.trim()) return;
+    try {
+      await tasksAPI.addComment(selectedTask._id, newComment);
+      const response = await tasksAPI.getComments(selectedTask._id);
+      setComments(response.data);
+      setNewComment('');
+      toast.success('Comment added');
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      toast.error('Failed to add comment');
+    }
+  };
+
+  const handleStatusChange = async (taskId, newStatus) => {
+    try {
+      await tasksAPI.update(taskId, { status: newStatus });
+      toast.success('Task status updated');
+      fetchTasks();
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast.error('Failed to update status');
+    }
+  };
+
+  const resetForm = () => {
+    setSelectedTask(null);
+    setFormData({
+      title: '',
+      description: '',
+      priority: 'medium',
+      status: 'pending',
+      assigned_to_id: '',
+      due_date: '',
     });
   };
 
-  const handleForwardMemberSelect = (email) => {
-    const member = boardMembers.find(m => m.email === email);
-    setForwardData({
-      ...forwardData,
-      forward_to: email,
-      forward_to_name: member ? `${member.name} (${member.role})` : email
-    });
-  };
-
-  const handleStatusChange = async (taskId, status) => {
-    try {
-      await tasksAPI.update(taskId, { status });
-      toast({ title: "Success", description: "Task status updated" });
-      fetchData();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update task",
-        variant: "destructive"
-      });
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case 'high': return 'bg-red-100 text-red-800 border-red-200';
+      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'low': return 'bg-green-100 text-green-800 border-green-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
-  const handleForwardTask = async (e) => {
-    e.preventDefault();
-    try {
-      await tasksAPI.forward(selectedTask._id, forwardData);
-      toast({ title: "Success", description: "Task forwarded successfully" });
-      setIsForwardOpen(false);
-      setForwardData({ forward_to: '', forward_to_name: '', comment: '' });
-      setSelectedTask(null);
-      fetchData();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error.response?.data?.detail || "Failed to forward task",
-        variant: "destructive"
-      });
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'completed': return 'bg-green-100 text-green-800 border-green-200';
+      case 'in_progress': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'pending': return 'bg-orange-100 text-orange-800 border-orange-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
-  const handleDeleteTask = async (taskId) => {
-    if (!window.confirm('Are you sure you want to delete this task?')) return;
-    try {
-      await tasksAPI.delete(taskId);
-      toast({ title: "Success", description: "Task deleted successfully" });
-      fetchData();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error.response?.data?.detail || "Failed to delete task",
-        variant: "destructive"
-      });
-    }
-  };
+  const filteredTasks = tasks.filter(task => {
+    if (filter === 'all') return true;
+    if (filter === 'my') return task.assigned_to_id === user?.id;
+    return task.status === filter;
+  });
 
-  const getStatusBadge = (status) => {
-    const variants = {
-      pending: { color: 'bg-yellow-100 text-yellow-700', icon: Clock },
-      in_progress: { color: 'bg-blue-100 text-blue-700', icon: AlertCircle },
-      completed: { color: 'bg-green-100 text-green-700', icon: CheckCircle }
-    };
-    const { color, icon: Icon } = variants[status] || variants.pending;
-    return (
-      <Badge className={color}>
-        <Icon className="h-3 w-3 mr-1" />
-        {status.replace('_', ' ').toUpperCase()}
-      </Badge>
-    );
-  };
-
-  const getPriorityBadge = (priority) => {
-    const colors = {
-      low: 'bg-gray-100 text-gray-700',
-      medium: 'bg-orange-100 text-orange-700',
-      high: 'bg-red-100 text-red-700'
-    };
-    return (
-      <Badge className={colors[priority] || colors.medium}>
-        {priority.toUpperCase()}
-      </Badge>
-    );
-  };
-
-  const createdTasks = tasks.filter(t => t.created_by === localStorage.getItem('adminUser') ? JSON.parse(localStorage.getItem('adminUser')).email : '');
-  const assignedTasks = tasks.filter(t => t.assigned_to === (localStorage.getItem('adminUser') ? JSON.parse(localStorage.getItem('adminUser')).email : ''));
-
-  if (loading) return <div>Loading...</div>;
+  if (loading) {
+    return <div className="flex justify-center py-8">Loading tasks...</div>;
+  }
 
   return (
-    <div>
+    <div data-testid="admin-tasks-page">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 className="text-3xl font-bold text-foreground">Task Management</h2>
-          <p className="text-muted-foreground">Create, assign, and track tasks with your team</p>
+          <p className="text-muted-foreground">Assign and manage tasks for board members</p>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
-            <Button>
+            <Button data-testid="create-task-btn">
               <Plus className="h-4 w-4 mr-2" />
-              Create Task
+              New Task
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md">
+          <DialogContent className="sm:max-w-lg">
             <DialogHeader>
-              <DialogTitle>Create New Task</DialogTitle>
+              <DialogTitle>{selectedTask ? 'Edit Task' : 'Create New Task'}</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleCreateTask} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label>Task Title</Label>
+                <label className="block text-sm font-medium mb-1">Title</label>
                 <Input
-                  value={newTask.title}
-                  onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                  placeholder="Enter task title"
+                  data-testid="task-title-input"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  placeholder="Task title"
                   required
                 />
               </div>
               <div>
-                <Label>Description</Label>
+                <label className="block text-sm font-medium mb-1">Description</label>
                 <Textarea
-                  value={newTask.description}
-                  onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                  placeholder="Task details..."
+                  data-testid="task-description-input"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Task description"
                   rows={3}
                   required
                 />
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Priority</label>
+                  <Select
+                    value={formData.priority}
+                    onValueChange={(value) => setFormData({ ...formData, priority: value })}
+                  >
+                    <SelectTrigger data-testid="task-priority-select">
+                      <SelectValue placeholder="Select priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Status</label>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(value) => setFormData({ ...formData, status: value })}
+                  >
+                    <SelectTrigger data-testid="task-status-select">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="in_progress">In Progress</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
               <div>
-                <Label>Assign To</Label>
-                <Select onValueChange={handleMemberSelect} required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select board member" />
+                <label className="block text-sm font-medium mb-1">Assign To</label>
+                <Select
+                  value={formData.assigned_to_id}
+                  onValueChange={(value) => setFormData({ ...formData, assigned_to_id: value })}
+                >
+                  <SelectTrigger data-testid="task-assignee-select">
+                    <SelectValue placeholder="Select a board member" />
                   </SelectTrigger>
                   <SelectContent>
-                    {boardMembers.map(member => (
-                      <SelectItem key={member.email} value={member.email}>
-                        {member.name} - {member.role}
+                    <SelectItem value="">Unassigned</SelectItem>
+                    {users.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label>Priority</Label>
-                <Select value={newTask.priority} onValueChange={(val) => setNewTask({ ...newTask, priority: val })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Due Date</Label>
+                <label className="block text-sm font-medium mb-1">Due Date</label>
                 <Input
+                  data-testid="task-due-date-input"
                   type="date"
-                  value={newTask.due_date}
-                  onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })}
+                  value={formData.due_date}
+                  onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
                 />
               </div>
-              <Button type="submit" className="w-full">Create Task</Button>
+              <div className="flex justify-end gap-2 pt-4">
+                <Button type="button" variant="outline" onClick={() => { setIsDialogOpen(false); resetForm(); }}>
+                  Cancel
+                </Button>
+                <Button type="submit" data-testid="save-task-btn">
+                  {selectedTask ? 'Update Task' : 'Create Task'}
+                </Button>
+              </div>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
-      <Tabs defaultValue="assigned">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="assigned">Assigned to Me ({assignedTasks.length})</TabsTrigger>
-          <TabsTrigger value="created">Created by Me ({createdTasks.length})</TabsTrigger>
-        </TabsList>
+      {/* Filter Buttons */}
+      <div className="flex gap-2 mb-6 flex-wrap">
+        <Button
+          variant={filter === 'all' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setFilter('all')}
+          data-testid="filter-all-btn"
+        >
+          All Tasks ({tasks.length})
+        </Button>
+        <Button
+          variant={filter === 'my' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setFilter('my')}
+          data-testid="filter-my-btn"
+        >
+          My Tasks ({tasks.filter(t => t.assigned_to_id === user?.id).length})
+        </Button>
+        <Button
+          variant={filter === 'pending' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setFilter('pending')}
+          data-testid="filter-pending-btn"
+        >
+          Pending ({tasks.filter(t => t.status === 'pending').length})
+        </Button>
+        <Button
+          variant={filter === 'in_progress' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setFilter('in_progress')}
+          data-testid="filter-inprogress-btn"
+        >
+          In Progress ({tasks.filter(t => t.status === 'in_progress').length})
+        </Button>
+        <Button
+          variant={filter === 'completed' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setFilter('completed')}
+          data-testid="filter-completed-btn"
+        >
+          Completed ({tasks.filter(t => t.status === 'completed').length})
+        </Button>
+      </div>
 
-        <TabsContent value="assigned" className="space-y-4 mt-6">
-          {assignedTasks.length === 0 ? (
-            <Card>
-              <CardContent className="p-8 text-center text-muted-foreground">
-                No tasks assigned to you yet
-              </CardContent>
-            </Card>
-          ) : (
-            assignedTasks.map(task => (
-              <Card key={task._id}>
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-2 flex-1">
-                      <CardTitle className="text-lg">{task.title}</CardTitle>
-                      <CardDescription>{task.description}</CardDescription>
-                      <div className="flex gap-2 items-center flex-wrap">
-                        {getStatusBadge(task.status)}
-                        {getPriorityBadge(task.priority)}
-                        {task.due_date && (
-                          <Badge variant="outline">
-                            Due: {new Date(task.due_date).toLocaleDateString()}
-                          </Badge>
-                        )}
+      {/* Tasks List */}
+      {filteredTasks.length === 0 ? (
+        <Card>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            No tasks found. Create your first task to get started.
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {filteredTasks.map((task) => (
+            <Card key={task._id} data-testid={`task-card-${task._id}`}>
+              <CardContent className="p-4">
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h3 className="font-semibold text-lg">{task.title}</h3>
+                      <Badge className={getPriorityColor(task.priority)}>
+                        {task.priority}
+                      </Badge>
+                      <Badge className={getStatusColor(task.status)}>
+                        {task.status.replace('_', ' ')}
+                      </Badge>
+                    </div>
+                    <p className="text-muted-foreground mb-3">{task.description}</p>
+                    <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <User className="h-4 w-4" />
+                        <span>Assigned to: {task.assigned_to_name || 'Unassigned'}</span>
+                      </div>
+                      {task.due_date && (
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4" />
+                          <span>Due: {task.due_date}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-4 w-4" />
+                        <span>Created by: {task.created_by_name}</span>
                       </div>
                     </div>
                   </div>
-                  <div className="text-sm text-muted-foreground mt-2">
-                    From: {task.created_by_name}
-                    {task.forwarded_from && (
-                      <span className="block">Forwarded from: {task.forwarded_from}</span>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex gap-2">
-                    {task.status !== 'completed' && (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleStatusChange(task._id, task.status === 'pending' ? 'in_progress' : 'completed')}
-                        >
-                          {task.status === 'pending' ? 'Start Task' : 'Mark Complete'}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedTask(task);
-                            setIsForwardOpen(true);
-                          }}
-                        >
-                          <ArrowRight className="h-4 w-4 mr-1" />
-                          Forward
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          )}
-        </TabsContent>
-
-        <TabsContent value="created" className="space-y-4 mt-6">
-          {createdTasks.length === 0 ? (
-            <Card>
-              <CardContent className="p-8 text-center text-muted-foreground">
-                You haven't created any tasks yet
-              </CardContent>
-            </Card>
-          ) : (
-            createdTasks.map(task => (
-              <Card key={task._id}>
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-2 flex-1">
-                      <CardTitle className="text-lg">{task.title}</CardTitle>
-                      <CardDescription>{task.description}</CardDescription>
-                      <div className="flex gap-2 items-center flex-wrap">
-                        {getStatusBadge(task.status)}
-                        {getPriorityBadge(task.priority)}
-                      </div>
+                  <div className="flex flex-col gap-2">
+                    {/* Quick Status Change */}
+                    <Select
+                      value={task.status}
+                      onValueChange={(value) => handleStatusChange(task._id, value)}
+                    >
+                      <SelectTrigger className="w-[140px]" data-testid={`status-change-${task._id}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="in_progress">In Progress</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewComments(task)}
+                        data-testid={`comments-btn-${task._id}`}
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEdit(task)}
+                        data-testid={`edit-task-${task._id}`}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDelete(task._id)}
+                        className="text-red-600 hover:text-red-700"
+                        data-testid={`delete-task-${task._id}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="text-sm text-muted-foreground mt-2">
-                    Assigned to: {task.assigned_to_name}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => handleDeleteTask(task._id)}
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Delete
-                  </Button>
-                </CardContent>
-              </Card>
-            ))
-          )}
-        </TabsContent>
-      </Tabs>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
-      {/* Forward Dialog */}
-      <Dialog open={isForwardOpen} onOpenChange={setIsForwardOpen}>
-        <DialogContent>
+      {/* Comments Dialog */}
+      <Dialog open={isCommentDialogOpen} onOpenChange={setIsCommentDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Forward Task</DialogTitle>
+            <DialogTitle>Comments - {selectedTask?.title}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleForwardTask} className="space-y-4">
-            <div>
-              <Label>Forward To</Label>
-              <Select onValueChange={handleForwardMemberSelect} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select member" />
-                </SelectTrigger>
-                <SelectContent>
-                  {boardMembers.filter(m => m.email !== selectedTask?.created_by).map(member => (
-                    <SelectItem key={member.email} value={member.email}>
-                      {member.name} - {member.role}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="space-y-4">
+            {/* Comments List */}
+            <div className="max-h-64 overflow-y-auto space-y-3">
+              {comments.length === 0 ? (
+                <p className="text-center text-muted-foreground py-4">No comments yet</p>
+              ) : (
+                comments.map((comment) => (
+                  <div key={comment._id} className="p-3 bg-secondary/50 rounded-lg">
+                    <div className="flex justify-between items-start mb-1">
+                      <span className="font-medium text-sm">{comment.user_name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(comment.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="text-sm">{comment.content}</p>
+                  </div>
+                ))
+              )}
             </div>
-            <div>
-              <Label>Comment (Optional)</Label>
+            {/* Add Comment */}
+            <div className="flex gap-2">
               <Textarea
-                value={forwardData.comment}
-                onChange={(e) => setForwardData({ ...forwardData, comment: e.target.value })}
-                placeholder="Add a note..."
+                data-testid="comment-input"
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Add a comment..."
                 rows={2}
+                className="flex-1"
               />
+              <Button
+                onClick={handleAddComment}
+                disabled={!newComment.trim()}
+                data-testid="add-comment-btn"
+              >
+                Send
+              </Button>
             </div>
-            <Button type="submit" className="w-full">Forward Task</Button>
-          </form>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
