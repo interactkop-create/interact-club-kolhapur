@@ -20,7 +20,7 @@ from models import (
     NewsArticle, NewsArticleCreate, NewsArticleUpdate,
     GalleryImage, GalleryImageCreate,
     ContactSubmit, SiteSettings, SiteSettingsUpdate,
-    Task, TaskCreate, TaskUpdate, TaskForward
+    Task, TaskCreate, TaskUpdate, CommentCreate, Comment
 )
 from auth import (
     get_password_hash, verify_password, create_access_token, get_current_user
@@ -565,74 +565,85 @@ async def create_admin_accounts():
 
 # ==================== TASK MANAGEMENT ROUTES ====================
 
-@api_router.get("/board-members-list")
-async def get_board_members_list(current_user: dict = Depends(get_current_user)):
-    """Get list of all board members for task assignment dropdown."""
-    members = await db.users.find({"role": {"$ne": None}}).to_list(100)
-    return [
-        {
-            "email": member["email"],
-            "name": member.get("name", member["email"]),
-            "role": member.get("role", "Member")
-        }
-        for member in members
-    ]
+@api_router.get("/users")
+async def get_users(current_user: dict = Depends(get_current_user)):
+    """Get all admin users for task assignment."""
+    users = await db.users.find({}, {"password": 0}).to_list(100)
+    return [{"id": str(user["_id"]), "name": user.get("name", user["email"]), "email": user["email"]} for user in users]
 
 
-@api_router.post("/tasks", response_model=Task)
+@api_router.get("/tasks")
+async def get_tasks(current_user: dict = Depends(get_current_user)):
+    """Get all tasks (admin only)."""
+    tasks = await db.tasks.find().sort("created_at", -1).to_list(100)
+    return [doc_to_dict(task) for task in tasks]
+
+
+@api_router.get("/tasks/my")
+async def get_my_tasks(current_user: dict = Depends(get_current_user)):
+    """Get tasks assigned to current user."""
+    tasks = await db.tasks.find({"assigned_to_id": current_user["id"]}).sort("created_at", -1).to_list(100)
+    return [doc_to_dict(task) for task in tasks]
+
+
+@api_router.get("/tasks/{task_id}")
+async def get_task(task_id: str, current_user: dict = Depends(get_current_user)):
+    """Get a single task."""
+    task = await db.tasks.find_one({"_id": ObjectId(task_id)})
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return doc_to_dict(task)
+
+
+@api_router.post("/tasks")
 async def create_task(
     task_data: TaskCreate,
     current_user: dict = Depends(get_current_user)
 ):
-    """Create a new task and assign to a board member."""
-    user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
+    """Create a new task (admin only)."""
+    # Get creator's name
+    creator = await db.users.find_one({"_id": ObjectId(current_user["id"])})
+    creator_name = creator.get("name", creator["email"]) if creator else "Unknown"
+    
+    # Get assignee's name if assigned
+    assigned_to_name = None
+    if task_data.assigned_to_id and task_data.assigned_to_id != "unassigned":
+        assignee = await db.users.find_one({"_id": ObjectId(task_data.assigned_to_id)})
+        assigned_to_name = assignee.get("name", assignee["email"]) if assignee else None
     
     task_dict = task_data.dict()
-    task_dict["created_by"] = user["email"]
-    task_dict["created_by_name"] = user.get("name", user["email"])
-    task_dict["status"] = "pending"
+    if task_dict.get("assigned_to_id") == "unassigned":
+        task_dict["assigned_to_id"] = None
+    task_dict["created_by_id"] = current_user["id"]
+    task_dict["created_by_name"] = creator_name
+    task_dict["assigned_to_name"] = assigned_to_name
     task_dict["created_at"] = datetime.utcnow()
     task_dict["updated_at"] = datetime.utcnow()
     
     result = await db.tasks.insert_one(task_dict)
     task_dict["_id"] = str(result.inserted_id)
     
-    return Task(**task_dict)
+    return task_dict
 
 
-@api_router.get("/tasks")
-async def get_tasks(current_user: dict = Depends(get_current_user)):
-    """Get all tasks for current user (created by them or assigned to them)."""
-    user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
-    user_email = user["email"]
-    
-    # Get tasks created by user or assigned to user
-    tasks = await db.tasks.find({
-        "$or": [
-            {"created_by": user_email},
-            {"assigned_to": user_email}
-        ]
-    }).sort("created_at", -1).to_list(1000)
-    
-    for task in tasks:
-        task["_id"] = str(task["_id"])
-    
-    return tasks
-
-
-@api_router.put("/tasks/{task_id}", response_model=Task)
+@api_router.put("/tasks/{task_id}")
 async def update_task(
     task_id: str,
     task_data: TaskUpdate,
     current_user: dict = Depends(get_current_user)
 ):
-    """Update task status, priority, or other fields."""
+    """Update a task (admin only)."""
     update_data = {k: v for k, v in task_data.dict().items() if v is not None}
-    update_data["updated_at"] = datetime.utcnow()
     
-    # If marking as completed, set completed_at
-    if update_data.get("status") == "completed":
-        update_data["completed_at"] = datetime.utcnow()
+    # Handle "unassigned" value
+    if update_data.get("assigned_to_id") == "unassigned":
+        update_data["assigned_to_id"] = None
+        update_data["assigned_to_name"] = None
+    elif "assigned_to_id" in update_data and update_data["assigned_to_id"]:
+        assignee = await db.users.find_one({"_id": ObjectId(update_data["assigned_to_id"])})
+        update_data["assigned_to_name"] = assignee.get("name", assignee["email"]) if assignee else None
+    
+    update_data["updated_at"] = datetime.utcnow()
     
     result = await db.tasks.find_one_and_update(
         {"_id": ObjectId(task_id)},
@@ -643,46 +654,7 @@ async def update_task(
     if not result:
         raise HTTPException(status_code=404, detail="Task not found")
     
-    result["_id"] = str(result["_id"])
-    return Task(**result)
-
-
-@api_router.post("/tasks/{task_id}/forward")
-async def forward_task(
-    task_id: str,
-    forward_data: TaskForward,
-    current_user: dict = Depends(get_current_user)
-):
-    """Forward task to another board member."""
-    user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
-    
-    # Get the original task
-    task = await db.tasks.find_one({"_id": ObjectId(task_id)})
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-    
-    # Prevent forwarding to original creator
-    if forward_data.forward_to == task["created_by"]:
-        raise HTTPException(
-            status_code=400, 
-            detail="Cannot forward task back to the person who created it"
-        )
-    
-    # Update task with new assignee
-    update_data = {
-        "assigned_to": forward_data.forward_to,
-        "assigned_to_name": forward_data.forward_to_name,
-        "forwarded_from": user["email"],
-        "forwarded_comment": forward_data.comment,
-        "updated_at": datetime.utcnow()
-    }
-    
-    await db.tasks.update_one(
-        {"_id": ObjectId(task_id)},
-        {"$set": update_data}
-    )
-    
-    return {"message": "Task forwarded successfully"}
+    return doc_to_dict(result)
 
 
 @api_router.delete("/tasks/{task_id}")
@@ -690,22 +662,56 @@ async def delete_task(
     task_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """Delete a task (only creator can delete)."""
-    user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
+    """Delete a task (admin only)."""
+    result = await db.tasks.delete_one({"_id": ObjectId(task_id)})
     
-    # Check if task exists and user is creator
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    # Also delete related comments
+    await db.task_comments.delete_many({"task_id": task_id})
+    
+    return {"message": "Task deleted successfully"}
+
+
+# ==================== TASK COMMENTS ROUTES ====================
+
+@api_router.get("/tasks/{task_id}/comments")
+async def get_task_comments(task_id: str, current_user: dict = Depends(get_current_user)):
+    """Get all comments for a task."""
+    comments = await db.task_comments.find({"task_id": task_id}).sort("created_at", 1).to_list(100)
+    return [doc_to_dict(comment) for comment in comments]
+
+
+@api_router.post("/tasks/{task_id}/comments")
+async def create_task_comment(
+    task_id: str,
+    comment_data: CommentCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Add a comment to a task."""
+    # Verify task exists
     task = await db.tasks.find_one({"_id": ObjectId(task_id)})
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     
-    if task["created_by"] != user["email"]:
-        raise HTTPException(
-            status_code=403, 
-            detail="Only task creator can delete the task"
-        )
+    # Get user's name
+    user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
+    user_name = user.get("name", user["email"]) if user else "Unknown"
     
-    await db.tasks.delete_one({"_id": ObjectId(task_id)})
-    return {"message": "Task deleted successfully"}
+    comment_dict = {
+        "task_id": task_id,
+        "user_id": current_user["id"],
+        "user_name": user_name,
+        "content": comment_data.content,
+        "created_at": datetime.utcnow()
+    }
+    
+    result = await db.task_comments.insert_one(comment_dict)
+    comment_dict["_id"] = str(result.inserted_id)
+    
+    return comment_dict
+
 
 # ==================== UPLOAD ROUTES ====================
 
