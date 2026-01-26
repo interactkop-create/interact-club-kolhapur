@@ -229,41 +229,52 @@ class SiteSettingsUpdate(BaseModel):
 class TaskCreate(BaseModel):
     title: str
     description: str
-    assigned_to: EmailStr
-    assigned_to_name: str
-    due_date: Optional[str] = None
     priority: str = "medium"  # low, medium, high
+    status: str = "pending"  # pending, in_progress, completed
+    assigned_to_id: Optional[str] = None
+    due_date: Optional[str] = None
 
 
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
-    status: Optional[str] = None  # pending, in_progress, completed
+    status: Optional[str] = None
     priority: Optional[str] = None
-
-
-class TaskForward(BaseModel):
-    forward_to: EmailStr
-    forward_to_name: str
-    comment: Optional[str] = None
+    assigned_to_id: Optional[str] = None
+    due_date: Optional[str] = None
 
 
 class Task(BaseModel):
     id: str = Field(default_factory=lambda: str(ObjectId()), alias="_id")
     title: str
     description: str
-    created_by: EmailStr
-    created_by_name: str
-    assigned_to: EmailStr
-    assigned_to_name: str
-    status: str = "pending"  # pending, in_progress, completed
     priority: str = "medium"
+    status: str = "pending"
+    assigned_to_id: Optional[str] = None
+    assigned_to_name: Optional[str] = None
+    created_by_id: str
+    created_by_name: str
     due_date: Optional[str] = None
-    forwarded_from: Optional[EmailStr] = None
-    forwarded_comment: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    completed_at: Optional[datetime] = None
+
+    class Config:
+        populate_by_name = True
+        json_encoders = {ObjectId: str}
+
+
+# Comment Models
+class CommentCreate(BaseModel):
+    content: str
+
+
+class Comment(BaseModel):
+    id: str = Field(default_factory=lambda: str(ObjectId()), alias="_id")
+    task_id: str
+    user_id: str
+    user_name: str
+    content: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
     class Config:
         populate_by_name = True
