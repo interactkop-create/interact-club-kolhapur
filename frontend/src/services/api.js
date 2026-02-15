@@ -85,7 +85,8 @@ export const usersAPI = {
 export const settingsAPI = {
   get: () => api.get('/settings'),
   update: (data) => api.put('/settings', data),
+  getMaintenanceStatus: () => api.get('/maintenance-status'),
+  toggleMaintenanceMode: () => api.put('/maintenance-mode'),
 };
-
 
 export default api;
