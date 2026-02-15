@@ -1,3 +1,4 @@
+import { Maintenance } from "./pages/Maintenance";
 import "./App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -24,12 +25,34 @@ import { AdminTasks } from "./pages/admin/AdminTasks";
 import { Toaster } from "./components/ui/sonner";
 
 function App() {
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [checkingMaintenance, setCheckingMaintenance] = useState(true);
+
+  useEffect(() => {
+    const checkMaintenance = async () => {
+      try {
+        const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/maintenance-status`);
+        const data = await response.json();
+        setMaintenanceMode(data.maintenance_mode);
+      } catch (error) {
+        console.error('Error checking maintenance status:', error);
+      } finally {
+        setCheckingMaintenance(false);
+      }
+    };
+    checkMaintenance();
+  }, []);
+
+  if (checkingMaintenance) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+
   return (
     <AuthProvider>
       <div className="App">
         <BrowserRouter>
           <Routes>
-            {/* Admin routes without header/footer */}
+            {/* Admin routes - always accessible */}
             <Route path="/admin/login" element={<AdminLogin />} />
             
             {/* Protected admin routes with admin layout */}
@@ -49,24 +72,28 @@ function App() {
               </ProtectedRoute>
             } />
             
-            {/* Public routes with header/footer */}
+            {/* Public routes - show maintenance page if enabled */}
             <Route path="/*" element={
-              <>
-                <Header />
-                <main className="flex-grow">
-                  <Routes>
-                    <Route index element={<Home />} />
-                    <Route path="about" element={<About />} />
-                    <Route path="events" element={<Events />} />
-                    <Route path="upcoming-events" element={<UpcomingEvents />} />
-                    <Route path="board" element={<Board />} />
-                    <Route path="news" element={<News />} />
-                    <Route path="gallery" element={<Gallery />} />
-                    <Route path="contact" element={<Contact />} />
-                  </Routes>
-                </main>
-                <Footer />
-              </>
+              maintenanceMode ? (
+                <Maintenance />
+              ) : (
+                <>
+                  <Header />
+                  <main className="flex-grow">
+                    <Routes>
+                      <Route index element={<Home />} />
+                      <Route path="about" element={<About />} />
+                      <Route path="events" element={<Events />} />
+                      <Route path="upcoming-events" element={<UpcomingEvents />} />
+                      <Route path="board" element={<Board />} />
+                      <Route path="news" element={<News />} />
+                      <Route path="gallery" element={<Gallery />} />
+                      <Route path="contact" element={<Contact />} />
+                    </Routes>
+                  </main>
+                  <Footer />
+                </>
+              )
             } />
           </Routes>
         </BrowserRouter>
@@ -75,5 +102,3 @@ function App() {
     </AuthProvider>
   );
 }
-
-export default App;
