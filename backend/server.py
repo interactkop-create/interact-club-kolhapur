@@ -470,6 +470,48 @@ async def update_settings(
     
     return {"message": "Settings updated successfully"}
 
+# ==================== MAINTENANCE MODE ROUTES ====================
+
+@api_router.get("/maintenance-status")
+async def get_maintenance_status():
+    """Check if site is in maintenance mode (public)."""
+    settings = await db.site_settings.find_one()
+    return {"maintenance_mode": settings.get("maintenance_mode", False) if settings else False}
+
+
+@api_router.put("/maintenance-mode")
+async def toggle_maintenance_mode(
+    current_user: dict = Depends(get_current_user)
+):
+    """Toggle maintenance mode (super admin only)."""
+    # Only admin@interactkop.com can toggle this
+    user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
+    if user["email"] != "admin@interactkop.com":
+        raise HTTPException(
+            status_code=403, 
+            detail="Only the super admin can toggle maintenance mode"
+        )
+    
+    # Get current status
+    settings = await db.site_settings.find_one()
+    current_status = settings.get("maintenance_mode", False) if settings else False
+    
+    # Toggle it
+    new_status = not current_status
+    
+    if settings:
+        await db.site_settings.update_one(
+            {"_id": settings["_id"]},
+            {"$set": {"maintenance_mode": new_status, "updated_at": datetime.utcnow()}}
+        )
+    else:
+        await db.site_settings.insert_one({
+            "maintenance_mode": new_status,
+            "updated_at": datetime.utcnow()
+        })
+    
+    return {"maintenance_mode": new_status, "message": f"Maintenance mode {'enabled' if new_status else 'disabled'}"}
+
 
 # ==================== SEED DATA ROUTE ====================
 
