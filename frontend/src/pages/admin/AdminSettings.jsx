@@ -1,24 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
+import { AlertTriangle, Shield, Save } from 'lucide-react';
 import { settingsAPI } from '../../services/api';
-import { useToast } from '../../hooks/use-toast';
+import { toast } from 'sonner';
+import { useAuth } from '../../contexts/AuthContext';
 
 export const AdminSettings = () => {
-  const { toast } = useToast();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const { user } = useAuth();
   const [settings, setSettings] = useState({
     active_members: 50,
     total_events: 20,
     lives_impacted: 1000,
     awards_won: 5
   });
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [togglingMaintenance, setTogglingMaintenance] = useState(false);
+
+  const isSuperAdmin = user?.email === 'admin@interactkop.com';
 
   useEffect(() => {
     fetchSettings();
+    fetchMaintenanceStatus();
   }, []);
 
   const fetchSettings = async () => {
@@ -26,143 +33,166 @@ export const AdminSettings = () => {
       const response = await settingsAPI.get();
       setSettings(response.data);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch settings",
-        variant: "destructive"
-      });
+      console.error('Error fetching settings:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const fetchMaintenanceStatus = async () => {
+    try {
+      const response = await settingsAPI.getMaintenanceStatus();
+      setMaintenanceMode(response.data.maintenance_mode);
+    } catch (error) {
+      console.error('Error fetching maintenance status:', error);
+    }
+  };
+
+  const handleSave = async () => {
     setSaving(true);
     try {
       await settingsAPI.update(settings);
-      toast({
-        title: "Success",
-        description: "Settings updated successfully"
-      });
+      toast.success('Settings updated successfully');
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update settings",
-        variant: "destructive"
-      });
+      console.error('Error saving settings:', error);
+      toast.error('Failed to save settings');
     } finally {
       setSaving(false);
     }
   };
 
+  const handleToggleMaintenance = async () => {
+    if (!window.confirm(
+      maintenanceMode 
+        ? 'Are you sure you want to DISABLE maintenance mode? The website will be accessible to everyone.'
+        : 'Are you sure you want to ENABLE maintenance mode? This will show a maintenance page to ALL visitors!'
+    )) {
+      return;
+    }
+
+    setTogglingMaintenance(true);
+    try {
+      const response = await settingsAPI.toggleMaintenanceMode();
+      setMaintenanceMode(response.data.maintenance_mode);
+      toast.success(response.data.message);
+    } catch (error) {
+      console.error('Error toggling maintenance mode:', error);
+      toast.error(error.response?.data?.detail || 'Failed to toggle maintenance mode');
+    } finally {
+      setTogglingMaintenance(false);
+    }
+  };
+
   if (loading) {
-    return <div>Loading...</div>;
+    return <div className="flex justify-center py-8">Loading settings...</div>;
   }
 
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-3xl font-bold text-foreground">Site Settings</h2>
+        <h2 className="text-3xl font-bold text-foreground">Settings</h2>
         <p className="text-muted-foreground">Manage website statistics and settings</p>
       </div>
 
-      <div className="max-w-2xl">
-        <Card>
+      {/* Kill Switch - Only for super admin */}
+      {isSuperAdmin && (
+        <Card className={`mb-6 ${maintenanceMode ? 'border-red-500 bg-red-50' : 'border-green-500 bg-green-50'}`}>
           <CardHeader>
-            <CardTitle>Dashboard Statistics</CardTitle>
-            <CardDescription>
-              Update the statistics displayed on the homepage and admin dashboard
-            </CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Kill Switch (Maintenance Mode)
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="active_members">Active Members</Label>
-                  <Input
-                    id="active_members"
-                    type="number"
-                    value={settings.active_members}
-                    onChange={(e) => setSettings({ ...settings, active_members: parseInt(e.target.value) })}
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">Number of active club members</p>
-                </div>
-
-                <div>
-                  <Label htmlFor="total_events">Total Events This Year</Label>
-                  <Input
-                    id="total_events"
-                    type="number"
-                    value={settings.total_events}
-                    onChange={(e) => setSettings({ ...settings, total_events: parseInt(e.target.value) })}
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">Events organized this year</p>
-                </div>
-
-                <div>
-                  <Label htmlFor="lives_impacted">Lives Impacted</Label>
-                  <Input
-                    id="lives_impacted"
-                    type="number"
-                    value={settings.lives_impacted}
-                    onChange={(e) => setSettings({ ...settings, lives_impacted: parseInt(e.target.value) })}
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">People helped through projects</p>
-                </div>
-
-                <div>
-                  <Label htmlFor="awards_won">Awards Won</Label>
-                  <Input
-                    id="awards_won"
-                    type="number"
-                    value={settings.awards_won}
-                    onChange={(e) => setSettings({ ...settings, awards_won: parseInt(e.target.value) })}
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">Awards and recognitions received</p>
-                </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">
+                  Status: {maintenanceMode ? (
+                    <span className="text-red-600">🔴 MAINTENANCE MODE ACTIVE</span>
+                  ) : (
+                    <span className="text-green-600">🟢 Website is LIVE</span>
+                  )}
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {maintenanceMode 
+                    ? 'All visitors see a maintenance page. Only admins can access the dashboard.'
+                    : 'Website is accessible to everyone.'}
+                </p>
               </div>
-
-              <Button type="submit" className="w-full" disabled={saving}>
-                {saving ? 'Saving...' : 'Save Settings'}
+              <Button
+                onClick={handleToggleMaintenance}
+                disabled={togglingMaintenance}
+                variant={maintenanceMode ? 'default' : 'destructive'}
+                className="min-w-[150px]"
+              >
+                {togglingMaintenance ? 'Processing...' : (
+                  maintenanceMode ? 'Disable Kill Switch' : 'Enable Kill Switch'
+                )}
               </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Preview</CardTitle>
-            <CardDescription>
-              How these stats will appear on the homepage
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-4 bg-secondary/30 rounded-lg">
-                <div className="text-3xl font-bold text-foreground">{settings.active_members}+</div>
-                <div className="text-sm text-muted-foreground mt-1">Active Members</div>
-              </div>
-              <div className="text-center p-4 bg-secondary/30 rounded-lg">
-                <div className="text-3xl font-bold text-foreground">{settings.total_events}+</div>
-                <div className="text-sm text-muted-foreground mt-1">Events This Year</div>
-              </div>
-              <div className="text-center p-4 bg-secondary/30 rounded-lg">
-                <div className="text-3xl font-bold text-foreground">{settings.lives_impacted}+</div>
-                <div className="text-sm text-muted-foreground mt-1">Lives Impacted</div>
-              </div>
-              <div className="text-center p-4 bg-secondary/30 rounded-lg">
-                <div className="text-3xl font-bold text-foreground">{settings.awards_won}+</div>
-                <div className="text-sm text-muted-foreground mt-1">Awards Won</div>
-              </div>
             </div>
+            {maintenanceMode && (
+              <div className="mt-4 p-3 bg-red-100 rounded-lg flex items-start gap-2">
+                <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
+                <p className="text-sm text-red-800">
+                  <strong>Warning:</strong> The website is currently showing a maintenance page to all visitors. 
+                  Remember to disable this once the issue is resolved.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
-      </div>
+      )}
+
+      {/* Website Statistics */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Website Statistics</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="active_members">Active Members</Label>
+              <Input
+                id="active_members"
+                type="number"
+                value={settings.active_members}
+                onChange={(e) => setSettings({ ...settings, active_members: parseInt(e.target.value) || 0 })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="total_events">Total Events</Label>
+              <Input
+                id="total_events"
+                type="number"
+                value={settings.total_events}
+                onChange={(e) => setSettings({ ...settings, total_events: parseInt(e.target.value) || 0 })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="lives_impacted">Lives Impacted</Label>
+              <Input
+                id="lives_impacted"
+                type="number"
+                value={settings.lives_impacted}
+                onChange={(e) => setSettings({ ...settings, lives_impacted: parseInt(e.target.value) || 0 })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="awards_won">Awards Won</Label>
+              <Input
+                id="awards_won"
+                type="number"
+                value={settings.awards_won}
+                onChange={(e) => setSettings({ ...settings, awards_won: parseInt(e.target.value) || 0 })}
+              />
+            </div>
+          </div>
+          <Button onClick={handleSave} disabled={saving} className="mt-4">
+            <Save className="h-4 w-4 mr-2" />
+            {saving ? 'Saving...' : 'Save Statistics'}
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 };
